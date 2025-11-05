@@ -11,12 +11,14 @@ async function handleBookUpload(e) {
     const author = document.getElementById('author').value.trim();
     const category = document.getElementById('category').value.trim();
     const summary = document.getElementById('summary').value.trim();
-    const description = document.getElementById('description').value.trim();
+    // حذفنا حقل الوصف الطويل لأننا نكتفي بالملخص
     const coverFile = document.getElementById('cover-file').files[0];
     const pdfFile = document.getElementById('pdf-file').files[0];
 
     if (!coverFile || !pdfFile) {
-        alert('الرجاء اختيار الغلاف وملف الكتاب أولاً.');
+        statusDiv.classList.remove('hidden');
+        statusText.textContent = 'خطأ: الرجاء اختيار الغلاف وملف الكتاب أولاً.';
+        statusText.classList.add('text-red-500');
         return;
     }
 
@@ -64,7 +66,6 @@ async function handleBookUpload(e) {
             author,
             category,
             summary,
-            description,
             cover: uploadResult.cover,
             downloadUrl: uploadResult.pdf
         };

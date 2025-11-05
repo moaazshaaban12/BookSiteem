@@ -139,7 +139,6 @@
        class="w-full border p-2 rounded-md focus:ring-2 focus:ring-blue-400" required>
 
       <textarea id="summary" placeholder="ملخص قصير" class="w-full p-2 rounded bg-[#16213e] text-white border border-[#6246e9]" required></textarea>
-      <textarea id="description" placeholder="وصف طويل" class="w-full p-2 rounded bg-[#16213e] text-white border border-[#6246e9]" required></textarea>
       <button type="submit" class="w-full bg-[#e94560] text-white font-bold py-2 rounded hover:bg-[#ff6b81] transition">توليد كود الكتاب</button>
     </form>
 
@@ -174,6 +173,22 @@
 
     <!-- ملف JavaScript لجميع الوظائف والمنطق -->
     <script>
+        // تأكد من تحميل الملف
+        if (typeof handleBookUpload === 'undefined') {
+            console.error('خطأ: لم يتم تحميل ملف upload.js');
+        }
+
+        // ربط النموذج بمعالج الرفع
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('book-form');
+            if (form) {
+                form.addEventListener('submit', handleBookUpload);
+                console.log('تم ربط النموذج بمعالج الرفع');
+            } else {
+                console.error('خطأ: لم يتم العثور على النموذج');
+            }
+        });
+
         let booksData = [];
 
         // 2. عناصر DOM الرئيسية
