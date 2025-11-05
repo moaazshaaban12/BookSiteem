@@ -1,6 +1,7 @@
 
 const crypto = require('crypto');
 const Busboy = require('busboy');
+const fetch = require('node-fetch');
 
 // Note: This function uses Netlify's Deploy API to create a new deploy
 // containing the uploaded files so they become persistent and public
@@ -8,8 +9,28 @@ const Busboy = require('busboy');
 // your Netlify site's settings: NETLIFY_AUTH_TOKEN and NETLIFY_SITE_ID.
 
 exports.handler = async (event, context) => {
+  // Add CORS headers
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  };
+
+  // Handle OPTIONS request (CORS preflight)
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 204,
+      headers: corsHeaders,
+      body: ''
+    };
+  }
+
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
+    return { 
+      statusCode: 405, 
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Method Not Allowed' }) 
+    };
   }
 
 
@@ -110,10 +131,18 @@ exports.handler = async (event, context) => {
           if (p.startsWith('books/')) resultUrls.pdf = `${siteUrl}/${clean}`;
         }
 
-        resolve({ statusCode: 200, body: JSON.stringify(Object.assign({ success: true }, resultUrls, { deploy: deployData.deploy_id || deployData.id || null })) });
+        resolve({ 
+          statusCode: 200, 
+          headers: corsHeaders,
+          body: JSON.stringify(Object.assign({ success: true }, resultUrls, { deploy: deployData.deploy_id || deployData.id || null }))
+        });
       } catch (err) {
         console.error('Server upload exception', err);
-        resolve({ statusCode: 500, body: JSON.stringify({ error: err.message || 'Upload failed' }) });
+        resolve({ 
+          statusCode: 500, 
+          headers: corsHeaders,
+          body: JSON.stringify({ error: err.message || 'Upload failed' }) 
+        });
       }
     });
 

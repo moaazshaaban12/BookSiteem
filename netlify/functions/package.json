@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@supabase/supabase-js": "^2.0.0",
-    "busboy": "^1.6.0"
+    "busboy": "^1.6.0",
+    "node-fetch": "^2.6.1"
   }
 }
