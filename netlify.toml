@@ -1,0 +1,12 @@
+[build]
+  functions = "netlify/functions"
+  publish = "."
+
+[build.environment]
+  NETLIFY_AUTH_TOKEN = "nfp_Wn1GhHkNgsMC9QZTvNQZidFC454fp5yU4c07"
+  NETLIFY_SITE_ID = "6e50a864-8451-4085-9b16-e683e1dc9f8a"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
