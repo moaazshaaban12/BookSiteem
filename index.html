@@ -6,7 +6,7 @@
     <title>BookSite - مكتبة الكتب الإلكترونية</title>
     <!-- تضمين خط Inter وتحميل Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="js/upload.js"></script>
+    <script defer src="upload.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
     <style>
         /* إعدادات الخط الافتراضية والتمرير السلس */
@@ -424,7 +424,6 @@
                                 const author = document.getElementById('author').value.trim();
                                 const category = document.getElementById('category').value.trim();
                                 const summary = document.getElementById('summary').value.trim();
-                                const description = document.getElementById('description').value.trim();
                                 const coverFile = document.getElementById('cover-file').files[0];
                                 const pdfFile = document.getElementById('pdf-file').files[0];
                                 if (!coverFile || !pdfFile) {
@@ -458,7 +457,6 @@
                                     author,
                                     category,
                                     summary,
-                                    description,
                                     cover: uploadResult.cover,
                                     downloadUrl: uploadResult.pdf
                                 };
