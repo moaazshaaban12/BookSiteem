@@ -2,9 +2,16 @@
   functions = "netlify/functions"
   publish = "."
 
+[functions]
+  node_bundler = "esbuild"
+
 [build.environment]
   NETLIFY_AUTH_TOKEN = "nfp_Wn1GhHkNgsMC9QZTvNQZidFC454fp5yU4c07"
   NETLIFY_SITE_ID = "6e50a864-8451-4085-9b16-e683e1dc9f8a"
+
+[dev]
+  framework = "#custom"
+  targetPort = 8888
 
 [[redirects]]
   from = "/*"

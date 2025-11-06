@@ -36,8 +36,25 @@ exports.handler = async (event, context) => {
 
   const NETLIFY_TOKEN = process.env.NETLIFY_AUTH_TOKEN;
   const NETLIFY_SITE_ID = process.env.NETLIFY_SITE_ID;
+  
+  console.log('Checking environment:', {
+    hasToken: !!NETLIFY_TOKEN,
+    hasSiteId: !!NETLIFY_SITE_ID,
+    siteId: NETLIFY_SITE_ID
+  });
+
   if (!NETLIFY_TOKEN || !NETLIFY_SITE_ID) {
-    return { statusCode: 500, body: JSON.stringify({ error: 'Server not configured: set NETLIFY_AUTH_TOKEN and NETLIFY_SITE_ID env vars' }) };
+    return { 
+      statusCode: 500, 
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        error: 'Server not configured: missing environment variables',
+        debug: {
+          hasToken: !!NETLIFY_TOKEN,
+          hasSiteId: !!NETLIFY_SITE_ID
+        }
+      }) 
+    };
   }
 
   const headers = {};
@@ -48,12 +65,25 @@ exports.handler = async (event, context) => {
   const files = {};
   const fields = {};
 
+  console.log('Upload request received:', {
+    method: event.httpMethod,
+    contentType: event.headers['content-type'],
+    bodyLength: event.body ? event.body.length : 0
+  });
+
   return new Promise((resolve) => {
     busboy.on('file', (fieldname, file, filename, encoding, mimetype) => {
+      console.log('Processing file:', { fieldname, filename, mimetype });
       const chunks = [];
       file.on('data', (data) => chunks.push(data));
       file.on('end', () => {
-        files[fieldname] = { buffer: Buffer.concat(chunks), filename, mimetype };
+        const buffer = Buffer.concat(chunks);
+        console.log(`File ${fieldname} complete:`, {
+          size: buffer.length,
+          filename,
+          mimetype
+        });
+        files[fieldname] = { buffer, filename, mimetype };
       });
     });
 

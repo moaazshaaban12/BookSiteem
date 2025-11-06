@@ -37,9 +37,17 @@ async function handleBookUpload(e) {
         progressBar.style.width = '25%';
 
         // رفع الملفات
+        console.log('Uploading files:', {
+            cover: coverFile.name,
+            pdf: pdfFile.name
+        });
+
         const res = await fetch('/.netlify/functions/upload', {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: {
+                'Accept': 'application/json'
+            }
         });
 
         if (!res.ok) {
