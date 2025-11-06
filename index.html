@@ -6,7 +6,7 @@
     <title>BookSite - مكتبة الكتب الإلكترونية</title>
     <!-- تضمين خط Inter وتحميل Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="js/upload.js"></script>
+    <script defer src="js/upload.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
     <style>
         /* إعدادات الخط الافتراضية والتمرير السلس */
@@ -113,17 +113,20 @@
     <button id="close-admin" class="absolute top-3 right-3 text-gray-400 hover:text-white">✕</button>
     <h2 class="text-2xl font-bold text-[#e94560] mb-4 text-center">إضافة كتاب جديد</h2>
 
-    <form id="book-form" class="space-y-4">
+    <form id="book-form" class="space-y-4" onsubmit="handleBookUpload(event)">
       <!-- مؤشر حالة الرفع -->
       <div id="upload-status" class="hidden">
         <div class="flex items-center justify-center space-x-2 space-x-reverse mb-4">
           <div class="animate-spin h-5 w-5 border-2 border-[#e94560] border-t-transparent rounded-full"></div>
           <span class="text-[#e94560] font-semibold" id="upload-status-text">جاري رفع الملفات...</span>
         </div>
-        <div class="w-full bg-gray-200 rounded-full h-2.5">
-          <div id="upload-progress" class="bg-[#e94560] h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+        <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+          <div id="upload-progress" class="bg-[#e94560] h-2.5 rounded-full transition-all duration-300 ease-in-out" style="width: 0%"></div>
         </div>
       </div>
+
+      <!-- رسالة الخطأ -->
+      <div id="error-message" class="hidden mt-4 p-4 text-sm text-red-500 bg-red-100 rounded-lg"></div>
 
       <input type="text" id="title" placeholder="عنوان الكتاب" class="w-full p-2 rounded bg-[#16213e] text-white border border-[#6246e9]" required>
       <input type="text" id="author" placeholder="اسم المؤلف" class="w-full p-2 rounded bg-[#16213e] text-white border border-[#6246e9]" required>

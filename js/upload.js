@@ -1,3 +1,18 @@
+// دالة إعادة تعيين حالة النموذج
+function resetFormState(form, statusDiv, statusText, progressBar, errorDiv) {
+    form.reset();
+    statusDiv.classList.add('hidden');
+    progressBar.style.width = '0%';
+    progressBar.classList.remove('bg-red-500');
+    statusText.classList.remove('text-red-500');
+    statusText.textContent = '';
+    if (errorDiv) {
+        errorDiv.classList.add('hidden');
+        errorDiv.textContent = '';
+    }
+    form.querySelector('button[type="submit"]').disabled = false;
+}
+
 // دالة رفع الكتاب
 async function handleBookUpload(e) {
     e.preventDefault();
@@ -26,7 +41,12 @@ async function handleBookUpload(e) {
     statusDiv.classList.remove('hidden');
     form.querySelector('button[type="submit"]').disabled = true;
 
+    const errorDiv = document.getElementById('error-message');
+    
     try {
+        // إخفاء رسالة الخطأ السابقة إن وجدت
+        errorDiv.classList.add('hidden');
+        
         // تحضير بيانات الرفع
         const formData = new FormData();
         formData.append('cover', coverFile);
@@ -92,10 +112,7 @@ async function handleBookUpload(e) {
         setTimeout(() => {
             document.getElementById('admin-upload').classList.add('hidden');
             // إعادة تعيين النموذج
-            form.reset();
-            statusDiv.classList.add('hidden');
-            progressBar.style.width = '0%';
-            form.querySelector('button[type="submit"]').disabled = false;
+            resetFormState(form, statusDiv, statusText, progressBar, errorDiv);
         }, 1000);
 
         // إظهار إشعار النجاح
@@ -106,9 +123,17 @@ async function handleBookUpload(e) {
         }
     } catch (err) {
         console.error('خطأ في الرفع:', err);
-        statusText.textContent = 'حدث خطأ: ' + err.message;
+        
+        // عرض رسالة الخطأ للمستخدم
+        errorDiv.textContent = 'حدث خطأ: ' + (err.message || 'فشل رفع الملفات');
+        errorDiv.classList.remove('hidden');
+        
+        // تحديث حالة النموذج
+        statusText.textContent = 'فشل الرفع';
         statusText.classList.add('text-red-500');
-        // إعادة تمكين الزر بعد الخطأ
+        progressBar.classList.add('bg-red-500');
+        
+        // إعادة تمكين الزر
         form.querySelector('button[type="submit"]').disabled = false;
     }
 }
