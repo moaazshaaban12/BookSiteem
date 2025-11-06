@@ -30,10 +30,52 @@ async function handleBookUpload(e) {
     const coverFile = document.getElementById('cover-file').files[0];
     const pdfFile = document.getElementById('pdf-file').files[0];
 
-    if (!coverFile || !pdfFile) {
+    // التحقق من الحقول المطلوبة
+    if (!title || !author || !category || !summary) {
+        statusText.textContent = 'خطأ: جميع الحقول مطلوبة';
+        statusText.classList.add('text-red-500');
         statusDiv.classList.remove('hidden');
+        return;
+    }
+
+    // التحقق من الملفات
+    if (!coverFile || !pdfFile) {
         statusText.textContent = 'خطأ: الرجاء اختيار الغلاف وملف الكتاب أولاً.';
         statusText.classList.add('text-red-500');
+        statusDiv.classList.remove('hidden');
+        return;
+    }
+
+    // التحقق من نوع الملفات
+    const allowedCoverTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    const allowedPdfTypes = ['application/pdf'];
+
+    if (!allowedCoverTypes.includes(coverFile.type)) {
+        statusText.textContent = 'خطأ: يجب أن يكون الغلاف بصيغة JPG أو PNG';
+        statusText.classList.add('text-red-500');
+        statusDiv.classList.remove('hidden');
+        return;
+    }
+
+    if (!allowedPdfTypes.includes(pdfFile.type)) {
+        statusText.textContent = 'خطأ: يجب أن يكون الكتاب بصيغة PDF';
+        statusText.classList.add('text-red-500');
+        statusDiv.classList.remove('hidden');
+        return;
+    }
+
+    // التحقق من حجم الملفات (10MB للغلاف و 100MB للكتاب)
+    if (coverFile.size > 10 * 1024 * 1024) {
+        statusText.textContent = 'خطأ: حجم الغلاف يجب أن لا يتجاوز 10 ميجابايت';
+        statusText.classList.add('text-red-500');
+        statusDiv.classList.remove('hidden');
+        return;
+    }
+
+    if (pdfFile.size > 100 * 1024 * 1024) {
+        statusText.textContent = 'خطأ: حجم الكتاب يجب أن لا يتجاوز 100 ميجابايت';
+        statusText.classList.add('text-red-500');
+        statusDiv.classList.remove('hidden');
         return;
     }
 
@@ -62,16 +104,22 @@ async function handleBookUpload(e) {
             pdf: pdfFile.name
         });
 
-        const res = await fetch('/.netlify/functions/upload', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
+        let res;
+        try {
+            res = await fetch('/.netlify/functions/upload', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+        } catch (networkError) {
+            throw new Error('فشل الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.');
+        }
 
         if (!res.ok) {
-            throw new Error('فشل رفع الملفات: ' + res.statusText);
+            const errorText = await res.text().catch(() => res.statusText);
+            throw new Error('فشل رفع الملفات: ' + errorText);
         }
 
         progressBar.style.width = '75%';
