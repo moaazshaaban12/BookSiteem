@@ -111,7 +111,8 @@ async function handleBookUpload(e) {
                 body: formData,
                 headers: {
                     'Accept': 'application/json'
-                }
+                },
+                credentials: 'same-origin'
             });
         } catch (networkError) {
             throw new Error('فشل الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.');

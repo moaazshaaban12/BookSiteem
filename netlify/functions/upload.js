@@ -11,9 +11,11 @@ const fetch = require('node-fetch');
 exports.handler = async (event, context) => {
   // Add CORS headers
   const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+    'Access-Control-Allow-Origin': 'https://booksitemm.netlify.app',
+    'Access-Control-Allow-Headers': 'Content-Type, Accept, Origin, Authorization',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Max-Age': '86400' // 24 hours
   };
 
   // Handle OPTIONS request (CORS preflight)
