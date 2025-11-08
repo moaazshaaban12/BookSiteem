@@ -417,67 +417,9 @@
                                 });
                             }
 
-                            // عند إرسال النموذج
-                            document.getElementById('book-form').addEventListener('submit', async (e) => {
-                                e.preventDefault();
-                                const title = document.getElementById('title').value.trim();
-                                const author = document.getElementById('author').value.trim();
-                                const category = document.getElementById('category').value.trim();
-                                const summary = document.getElementById('summary').value.trim();
-                                const description = document.getElementById('description').value.trim();
-                                const coverFile = document.getElementById('cover-file').files[0];
-                                const pdfFile = document.getElementById('pdf-file').files[0];
-                                if (!coverFile || !pdfFile) {
-                                    alert('الرجاء اختيار الغلاف وملف الكتاب أولاً.');
-                                    return;
-                                }
-                                // رفع الملفات عبر Netlify Function
-                                const formData = new FormData();
-                                formData.append('cover', coverFile);
-                                formData.append('pdf', pdfFile);
-                                let uploadResult;
-                                try {
-                                    const res = await fetch('/.netlify/functions/upload', {
-                                        method: 'POST',
-                                        body: formData
-                                    });
-                                    uploadResult = await res.json();
-                                } catch (err) {
-                                    alert('فشل الاتصال بخادم الرفع.');
-                                    return;
-                                }
-                                if (!uploadResult || !uploadResult.success || !uploadResult.cover || !uploadResult.pdf) {
-                                    alert('فشل رفع الملفات.');
-                                    return;
-                                }
-                                // إنشاء كود الكتاب
-                                const id = 'book-' + Math.random().toString(36).substring(2, 9);
-                                const bookJSON = {
-                                    id,
-                                    title,
-                                    author,
-                                    category,
-                                    summary,
-                                    description,
-                                    cover: uploadResult.cover,
-                                    downloadUrl: uploadResult.pdf
-                                };
-                                // عرض الكود الناتج
-                                const outputDiv = document.getElementById('generated-code');
-                                const pre = outputDiv.querySelector('pre');
-                                pre.textContent = JSON.stringify(bookJSON, null, 4);
-                                outputDiv.classList.remove('hidden');
-                                // أضف الكتاب إلى الواجهة فوراً وأغلق نافذة الإدخال
-                                booksData.unshift(bookJSON);
-                                renderBooks();
-                                document.getElementById('admin-upload').classList.add('hidden');
-                                // إشعار النجاح
-                                const alertBox = document.getElementById('success-alert');
-                                if (alertBox) {
-                                    alertBox.classList.remove('hidden');
-                                    setTimeout(() => alertBox.classList.add('hidden'), 2000);
-                                }
-                            });
+                            // تم إزالة المعالج المزدوج هنا لأن النموذج مرتبط بالفعل بـ handleBookUpload في
+                            // ملف `js/upload.js`. هذه الإزالة تمنع أخطاء الوصول إلى عناصر DOM غير الموجودة
+                            // (مثلاً `description`) وتؤمن أن المنطق المركزي في `upload.js` هو المسؤول عن الرفع.
                         });
 
 

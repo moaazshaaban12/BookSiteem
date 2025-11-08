@@ -11,7 +11,8 @@ const fetch = require('node-fetch');
 exports.handler = async (event, context) => {
   // Add CORS headers
   const corsHeaders = {
-    'Access-Control-Allow-Origin': 'https://booksitemm.netlify.app',
+    // Use wildcard during testing; for production you may restrict to your site origin.
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Accept, Origin, Authorization',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Credentials': 'true',
@@ -128,7 +129,7 @@ exports.handler = async (event, context) => {
         if (!createDeployRes.ok) {
           const txt = await createDeployRes.text();
           console.error('Failed to create deploy:', createDeployRes.status, txt);
-          return resolve({ statusCode: 500, body: JSON.stringify({ error: 'Failed to create deploy', details: txt }) });
+          return resolve({ statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'Failed to create deploy', details: txt }) });
         }
         const deployData = await createDeployRes.json();
 
@@ -149,7 +150,7 @@ exports.handler = async (event, context) => {
           if (!putRes.ok) {
             const txt = await putRes.text();
             console.error('Failed to upload file to Netlify:', p, putRes.status, txt);
-            return resolve({ statusCode: 500, body: JSON.stringify({ error: 'Failed to upload file', path: p, details: txt }) });
+            return resolve({ statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'Failed to upload file', path: p, details: txt }) });
           }
         }
 

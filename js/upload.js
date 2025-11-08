@@ -1,188 +1,208 @@
-// دالة إعادة تعيين حالة النموذج
-function resetFormState(form, statusDiv, statusText, progressBar, errorDiv) {
-    form.reset();
-    statusDiv.classList.add('hidden');
-    progressBar.style.width = '0%';
-    progressBar.classList.remove('bg-red-500');
-    statusText.classList.remove('text-red-500');
-    statusText.textContent = '';
-    if (errorDiv) {
-        errorDiv.classList.add('hidden');
-        errorDiv.textContent = '';
+// ثوابت التطبيق
+const MAX_COVER_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_PDF_SIZE = 100 * 1024 * 1024;  // 100MB
+const ALLOWED_COVER_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
+const ALLOWED_PDF_TYPES = ['application/pdf'];
+const UPLOAD_ENDPOINT = '/.netlify/functions/upload';
+
+// دالة التحقق من البيانات
+function validateFormData(data) {
+    const { title, author, category, summary, coverFile, pdfFile } = data;
+    
+    if (!title || !author || !category || !summary) {
+        throw new Error('جميع الحقول مطلوبة');
     }
-    form.querySelector('button[type="submit"]').disabled = false;
+
+    if (!coverFile || !pdfFile) {
+        throw new Error('يرجى اختيار ملف الغلاف وملف الكتاب');
+    }
+
+    if (!ALLOWED_COVER_TYPES.includes(coverFile.type)) {
+        throw new Error('يجب أن يكون الغلاف بصيغة JPG أو PNG');
+    }
+
+    if (!ALLOWED_PDF_TYPES.includes(pdfFile.type)) {
+        throw new Error('يجب أن يكون الكتاب بصيغة PDF');
+    }
+
+    if (coverFile.size > MAX_COVER_SIZE) {
+        throw new Error('حجم الغلاف يجب أن لا يتجاوز 10 ميجابايت');
+    }
+
+    if (pdfFile.size > MAX_PDF_SIZE) {
+        throw new Error('حجم الكتاب يجب أن لا يتجاوز 100 ميجابايت');
+    }
 }
 
-// دالة رفع الكتاب
-async function handleBookUpload(e) {
-    e.preventDefault();
-    const form = e.target;
-    const statusDiv = document.getElementById('upload-status');
-    const statusText = document.getElementById('upload-status-text');
-    const progressBar = document.getElementById('upload-progress');
-    
-    // جمع البيانات
-    const title = document.getElementById('title').value.trim();
-    const author = document.getElementById('author').value.trim();
-    const category = document.getElementById('category').value.trim();
-    const summary = document.getElementById('summary').value.trim();
-    // حذفنا حقل الوصف الطويل لأننا نكتفي بالملخص
-    const coverFile = document.getElementById('cover-file').files[0];
-    const pdfFile = document.getElementById('pdf-file').files[0];
-
-    // التحقق من الحقول المطلوبة
-    if (!title || !author || !category || !summary) {
-        statusText.textContent = 'خطأ: جميع الحقول مطلوبة';
-        statusText.classList.add('text-red-500');
-        statusDiv.classList.remove('hidden');
-        return;
-    }
-
-    // التحقق من الملفات
-    if (!coverFile || !pdfFile) {
-        statusText.textContent = 'خطأ: الرجاء اختيار الغلاف وملف الكتاب أولاً.';
-        statusText.classList.add('text-red-500');
-        statusDiv.classList.remove('hidden');
-        return;
-    }
-
-    // التحقق من نوع الملفات
-    const allowedCoverTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-    const allowedPdfTypes = ['application/pdf'];
-
-    if (!allowedCoverTypes.includes(coverFile.type)) {
-        statusText.textContent = 'خطأ: يجب أن يكون الغلاف بصيغة JPG أو PNG';
-        statusText.classList.add('text-red-500');
-        statusDiv.classList.remove('hidden');
-        return;
-    }
-
-    if (!allowedPdfTypes.includes(pdfFile.type)) {
-        statusText.textContent = 'خطأ: يجب أن يكون الكتاب بصيغة PDF';
-        statusText.classList.add('text-red-500');
-        statusDiv.classList.remove('hidden');
-        return;
-    }
-
-    // التحقق من حجم الملفات (10MB للغلاف و 100MB للكتاب)
-    if (coverFile.size > 10 * 1024 * 1024) {
-        statusText.textContent = 'خطأ: حجم الغلاف يجب أن لا يتجاوز 10 ميجابايت';
-        statusText.classList.add('text-red-500');
-        statusDiv.classList.remove('hidden');
-        return;
-    }
-
-    if (pdfFile.size > 100 * 1024 * 1024) {
-        statusText.textContent = 'خطأ: حجم الكتاب يجب أن لا يتجاوز 100 ميجابايت';
-        statusText.classList.add('text-red-500');
-        statusDiv.classList.remove('hidden');
-        return;
-    }
-
-    // إظهار مؤشر التحميل
-    statusDiv.classList.remove('hidden');
-    form.querySelector('button[type="submit"]').disabled = true;
-
-    const errorDiv = document.getElementById('error-message');
-    
+// دالة رفع الملفات إلى الخادم
+async function uploadToServer(formData) {
     try {
-        // إخفاء رسالة الخطأ السابقة إن وجدت
-        errorDiv.classList.add('hidden');
-        
-        // تحضير بيانات الرفع
-        const formData = new FormData();
-        formData.append('cover', coverFile);
-        formData.append('pdf', pdfFile);
-
-        // تحديث النص والتقدم
-        statusText.textContent = 'جاري رفع الغلاف...';
-        progressBar.style.width = '25%';
-
-        // رفع الملفات
-        console.log('Uploading files:', {
-            cover: coverFile.name,
-            pdf: pdfFile.name
+        const response = await fetch(UPLOAD_ENDPOINT, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json'
+            }
         });
 
-        let res;
-        try {
-            res = await fetch('/.netlify/functions/upload', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'Accept': 'application/json'
-                },
-                credentials: 'same-origin'
-            });
-        } catch (networkError) {
-            throw new Error('فشل الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.');
-        }
-
-        if (!res.ok) {
-            const errorText = await res.text().catch(() => res.statusText);
+        if (!response.ok) {
+            const errorText = await response.text().catch(() => response.statusText);
             throw new Error('فشل رفع الملفات: ' + errorText);
         }
 
-        progressBar.style.width = '75%';
-        statusText.textContent = 'جاري معالجة الملفات...';
-
-        const uploadResult = await res.json();
+        const result = await response.json();
         
-        if (!uploadResult || !uploadResult.success || !uploadResult.cover || !uploadResult.pdf) {
+        if (!result?.success || !result?.cover || !result?.pdf) {
             throw new Error('فشل استلام روابط الملفات المرفوعة');
         }
 
-        progressBar.style.width = '100%';
-        statusText.textContent = 'تم الرفع بنجاح!';
+        return result;
+    } catch (error) {
+        if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+            throw new Error('فشل الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.');
+        }
+        throw error;
+    }
+}
 
-        // إنشاء كود الكتاب
-        const id = 'book-' + Math.random().toString(36).substring(2, 9);
-        const bookJSON = {
-            id,
-            title,
-            author,
-            category,
-            summary,
+// دالة تحديث واجهة المستخدم
+function updateUI(elements, { message, error, progress }) {
+    const { form, statusDiv, statusText, progressBar, errorDiv, submitButton } = elements;
+
+    if (error) {
+        errorDiv.textContent = error;
+        errorDiv.classList.remove('hidden');
+        statusText.textContent = 'فشل الرفع';
+        statusText.classList.add('text-red-500');
+        progressBar.classList.add('bg-red-500');
+        submitButton.disabled = false;
+        return;
+    }
+
+    if (progress !== undefined) {
+        progressBar.style.width = `${progress}%`;
+    }
+
+    if (message) {
+        statusText.textContent = message;
+    }
+}
+
+// دالة رفع الكتاب الرئيسية
+async function handleBookUpload(e) {
+    e.preventDefault();
+    
+    const elements = {
+        form: e.target,
+        statusDiv: document.getElementById('upload-status'),
+        statusText: document.getElementById('upload-status-text'),
+        progressBar: document.getElementById('upload-progress'),
+        errorDiv: document.getElementById('error-message'),
+        submitButton: e.target.querySelector('button[type="submit"]')
+    };
+
+    // تهيئة حالة النموذج
+    elements.statusDiv.classList.remove('hidden');
+    elements.errorDiv.classList.add('hidden');
+    elements.progressBar.style.width = '0%';
+    elements.progressBar.classList.remove('bg-red-500');
+    elements.statusText.classList.remove('text-red-500');
+    elements.submitButton.disabled = true;
+
+    try {
+        // جمع البيانات
+        const formData = {
+            title: document.getElementById('title')?.value?.trim(),
+            author: document.getElementById('author')?.value?.trim(),
+            category: document.getElementById('category')?.value?.trim(),
+            summary: document.getElementById('summary')?.value?.trim(),
+            coverFile: document.getElementById('cover-file')?.files[0],
+            pdfFile: document.getElementById('pdf-file')?.files[0]
+        };
+
+        // التحقق من البيانات
+        validateFormData(formData);
+
+        // تحضير بيانات الرفع
+        const uploadData = new FormData();
+        uploadData.append('cover', formData.coverFile);
+        uploadData.append('pdf', formData.pdfFile);
+
+        // تحديث واجهة المستخدم
+        updateUI(elements, {
+            message: 'جاري رفع الملفات...',
+            progress: 25
+        });
+
+        // رفع الملفات
+        const uploadResult = await uploadToServer(uploadData);
+
+        // تحديث التقدم
+        updateUI(elements, {
+            message: 'جاري معالجة الملفات...',
+            progress: 75
+        });
+
+        // إنشاء بيانات الكتاب
+        const bookData = {
+            id: 'book-' + Math.random().toString(36).substring(2, 9),
+            title: formData.title,
+            author: formData.author,
+            category: formData.category,
+            summary: formData.summary,
             cover: uploadResult.cover,
             downloadUrl: uploadResult.pdf
         };
 
+        // تحديث واجهة المستخدم
+        updateUI(elements, {
+            message: 'تم الرفع بنجاح!',
+            progress: 100
+        });
+
         // عرض الكود الناتج
         const outputDiv = document.getElementById('generated-code');
         const pre = outputDiv.querySelector('pre');
-        pre.textContent = JSON.stringify(bookJSON, null, 4);
+        pre.textContent = JSON.stringify(bookData, null, 2);
         outputDiv.classList.remove('hidden');
 
-        // أضف الكتاب إلى الواجهة فوراً
-        booksData.unshift(bookJSON);
-        renderBooks();
+        // إضافة الكتاب للقائمة وتحديث العرض
+        if (typeof window.booksData !== 'undefined') {
+            window.booksData.unshift(bookData);
+            if (typeof window.renderBooks === 'function') {
+                window.renderBooks();
+            }
+        }
 
-        // إغلاق نافذة الإدخال بعد ثانية
-        setTimeout(() => {
-            document.getElementById('admin-upload').classList.add('hidden');
-            // إعادة تعيين النموذج
-            resetFormState(form, statusDiv, statusText, progressBar, errorDiv);
-        }, 1000);
-
-        // إظهار إشعار النجاح
+        // إظهار رسالة النجاح
         const alertBox = document.getElementById('success-alert');
         if (alertBox) {
             alertBox.classList.remove('hidden');
             setTimeout(() => alertBox.classList.add('hidden'), 2000);
         }
-    } catch (err) {
-        console.error('خطأ في الرفع:', err);
-        
-        // عرض رسالة الخطأ للمستخدم
-        errorDiv.textContent = 'حدث خطأ: ' + (err.message || 'فشل رفع الملفات');
-        errorDiv.classList.remove('hidden');
-        
-        // تحديث حالة النموذج
-        statusText.textContent = 'فشل الرفع';
-        statusText.classList.add('text-red-500');
-        progressBar.classList.add('bg-red-500');
-        
-        // إعادة تمكين الزر
-        form.querySelector('button[type="submit"]').disabled = false;
+
+        // إغلاق النافذة وإعادة تعيين النموذج
+        setTimeout(() => {
+            document.getElementById('admin-upload').classList.add('hidden');
+            elements.form.reset();
+            elements.statusDiv.classList.add('hidden');
+            elements.progressBar.style.width = '0%';
+            elements.submitButton.disabled = false;
+        }, 1000);
+
+    } catch (error) {
+        console.error('خطأ في الرفع:', error);
+        updateUI(elements, {
+            error: 'حدث خطأ: ' + (error.message || 'فشل رفع الملفات')
+        });
     }
 }
+
+// تسجيل معالج الحدث عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('book-form');
+    if (form) {
+        form.addEventListener('submit', handleBookUpload);
+    }
+});
