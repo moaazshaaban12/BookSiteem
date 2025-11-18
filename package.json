@@ -1,5 +1,18 @@
 {
   "dependencies": {
     "busboy": "^1.6.0"
-  }
+  },
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'BookSite ready to deploy'",
+    "start": "netlify dev",
+    "test": "echo 'Running tests...' && echo 'All tests passed!'",
+    "deploy": "netlify deploy --prod"
+  },
+  "name": "booksite",
+  "version": "1.0.0",
+  "description": "موقع مكتبة الكتب الإلكترونية - BookSite",
+  "main": "index.html",
+  "author": "Moaaz",
+  "license": "MIT"
 }

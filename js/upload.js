@@ -5,12 +5,23 @@ const ALLOWED_COVER_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
 const ALLOWED_PDF_TYPES = ['application/pdf'];
 const UPLOAD_ENDPOINT = '/.netlify/functions/upload';
 
-// دالة التحقق من البيانات
+// معرّف فريد لكل جلسة (يضاف أمان إضافي)
+const SESSION_ID = Math.random().toString(36).substring(2, 15);
+
+// دالة التحقق من البيانات مع حماية إضافية
 function validateFormData(data) {
     const { title, author, category, summary, coverFile, pdfFile } = data;
     
+    // التحقق من عدم ترك أي حقل فارغاً
     if (!title || !author || !category || !summary) {
-        throw new Error('جميع الحقول مطلوبة');
+        throw new Error('جميع الحقول مطلوبة ولا يمكن تركها فارغة');
+    }
+
+    // التحقق من أن الحقول لا تحتوي على أكواد برمجية ضارة
+    const dangerousPatterns = /<script|javascript:|onerror|onclick/gi;
+    if (dangerousPatterns.test(title) || dangerousPatterns.test(author) || 
+        dangerousPatterns.test(category) || dangerousPatterns.test(summary)) {
+        throw new Error('تم اكتشاف محتوى غير آمن. يرجى التحقق من المدخلات.');
     }
 
     if (!coverFile || !pdfFile) {
@@ -34,9 +45,12 @@ function validateFormData(data) {
     }
 }
 
-// دالة رفع الملفات إلى الخادم
+// دالة رفع الملفات إلى الخادم مع معالجة أفضل للأخطاء
 async function uploadToServer(formData) {
     try {
+        // إضافة معرّف الجلسة كطبقة أمان إضافية
+        formData.append('sessionId', SESSION_ID);
+        
         const response = await fetch(UPLOAD_ENDPOINT, {
             method: 'POST',
             body: formData,
@@ -47,20 +61,35 @@ async function uploadToServer(formData) {
         });
 
         if (!response.ok) {
+            // معالجة محددة لكل نوع خطأ
+            if (response.status === 404) {
+                throw new Error('❌ خدمة الرفع غير متاحة. تأكد من أن الدالة منشورة على Netlify.');
+            }
+            if (response.status === 413) {
+                throw new Error('❌ حجم الملف كبير جداً. يرجى التأكد من حد الحجم الأقصى.');
+            }
+            if (response.status === 500) {
+                const txt = await response.text().catch(() => response.statusText);
+                throw new Error('❌ خطأ في الخادم: ' + (txt || 'حاول لاحقاً'));
+            }
+            if (response.status === 429) {
+                throw new Error('❌ الكثير من المحاولات. انتظر قليلاً ثم حاول مجدداً.');
+            }
             const errorText = await response.text().catch(() => response.statusText);
-            throw new Error('فشل رفع الملفات: ' + errorText);
+            throw new Error('❌ فشل رفع الملفات: ' + errorText);
         }
 
         const result = await response.json();
         
+        // التحقق من أن الرد يحتوي على البيانات المطلوبة
         if (!result?.success || !result?.cover || !result?.pdf) {
-            throw new Error('فشل استلام روابط الملفات المرفوعة');
+            throw new Error('❌ فشل الخادم في إرجاع روابط الملفات');
         }
 
         return result;
     } catch (error) {
         if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-            throw new Error('فشل الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.');
+            throw new Error('❌ فشل الاتصال بالإنترنت أو الخادم. تحقق من الاتصال.');
         }
         throw error;
     }
@@ -89,7 +118,7 @@ function updateUI(elements, { message, error, progress }) {
     }
 }
 
-// دالة رفع الكتاب الرئيسية
+// دالة رفع الكتاب الرئيسية مع معالجة شاملة للأخطاء
 async function handleBookUpload(e) {
     e.preventDefault();
     
@@ -111,14 +140,25 @@ async function handleBookUpload(e) {
     elements.submitButton.disabled = true;
 
     try {
-        // جمع البيانات
+        // جمع البيانات بعناية
+        const titleInput = document.getElementById('title');
+        const authorInput = document.getElementById('author');
+        const categoryInput = document.getElementById('category');
+        const summaryInput = document.getElementById('summary');
+        const coverFileInput = document.getElementById('cover-file');
+        const pdfFileInput = document.getElementById('pdf-file');
+
+        if (!titleInput || !authorInput || !categoryInput || !summaryInput) {
+            throw new Error('❌ لم يتم العثور على جميع حقول النموذج');
+        }
+
         const formData = {
-            title: document.getElementById('title')?.value?.trim(),
-            author: document.getElementById('author')?.value?.trim(),
-            category: document.getElementById('category')?.value?.trim(),
-            summary: document.getElementById('summary')?.value?.trim(),
-            coverFile: document.getElementById('cover-file')?.files[0],
-            pdfFile: document.getElementById('pdf-file')?.files[0]
+            title: titleInput.value?.trim(),
+            author: authorInput.value?.trim(),
+            category: categoryInput.value?.trim(),
+            summary: summaryInput.value?.trim(),
+            coverFile: coverFileInput?.files[0],
+            pdfFile: pdfFileInput?.files[0]
         };
 
         // التحقق من البيانات
@@ -131,8 +171,8 @@ async function handleBookUpload(e) {
 
         // تحديث واجهة المستخدم
         updateUI(elements, {
-            message: 'جاري رفع الملفات...',
-            progress: 25
+            message: 'جاري رفع الملفات (0%)...',
+            progress: 10
         });
 
         // رفع الملفات
@@ -140,36 +180,43 @@ async function handleBookUpload(e) {
 
         // تحديث التقدم
         updateUI(elements, {
-            message: 'جاري معالجة الملفات...',
+            message: 'جاري معالجة البيانات (75%)...',
             progress: 75
         });
 
-        // إنشاء بيانات الكتاب
+        // إنشاء بيانات الكتاب بمعرّف فريد
         const bookData = {
-            id: 'book-' + Math.random().toString(36).substring(2, 9),
+            id: 'book-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
             title: formData.title,
             author: formData.author,
             category: formData.category,
             summary: formData.summary,
+            description: formData.summary, // استخدم الملخص كوصف قصير
             cover: uploadResult.cover,
-            downloadUrl: uploadResult.pdf
+            downloadUrl: uploadResult.pdf,
+            dateAdded: new Date().toISOString()
         };
 
         // تحديث واجهة المستخدم
         updateUI(elements, {
-            message: 'تم الرفع بنجاح!',
+            message: 'تم الرفع بنجاح! (100%)',
             progress: 100
         });
 
         // عرض الكود الناتج
         const outputDiv = document.getElementById('generated-code');
-        const pre = outputDiv.querySelector('pre');
-        pre.textContent = JSON.stringify(bookData, null, 2);
-        outputDiv.classList.remove('hidden');
+        if (outputDiv) {
+            const pre = outputDiv.querySelector('pre');
+            if (pre) {
+                pre.textContent = JSON.stringify(bookData, null, 2);
+                outputDiv.classList.remove('hidden');
+            }
+        }
 
         // إضافة الكتاب للقائمة وتحديث العرض
-        if (typeof window.booksData !== 'undefined') {
+        if (typeof window.booksData !== 'undefined' && Array.isArray(window.booksData)) {
             window.booksData.unshift(bookData);
+            console.log('✅ تم إضافة الكتاب:', bookData.title);
             if (typeof window.renderBooks === 'function') {
                 window.renderBooks();
             }
@@ -179,22 +226,25 @@ async function handleBookUpload(e) {
         const alertBox = document.getElementById('success-alert');
         if (alertBox) {
             alertBox.classList.remove('hidden');
-            setTimeout(() => alertBox.classList.add('hidden'), 2000);
+            setTimeout(() => alertBox.classList.add('hidden'), 3000);
         }
 
-        // إغلاق النافذة وإعادة تعيين النموذج
+        // إغلاق النافذة وإعادة تعيين النموذج بعد تأخير قصير
         setTimeout(() => {
-            document.getElementById('admin-upload').classList.add('hidden');
+            const adminUploadDiv = document.getElementById('admin-upload');
+            if (adminUploadDiv) {
+                adminUploadDiv.classList.add('hidden');
+            }
             elements.form.reset();
             elements.statusDiv.classList.add('hidden');
             elements.progressBar.style.width = '0%';
             elements.submitButton.disabled = false;
-        }, 1000);
+        }, 2000);
 
     } catch (error) {
-        console.error('خطأ في الرفع:', error);
+        console.error('❌ خطأ في الرفع:', error);
         updateUI(elements, {
-            error: 'حدث خطأ: ' + (error.message || 'فشل رفع الملفات')
+            error: error.message || 'حدث خطأ غير متوقع في رفع الملفات'
         });
     }
 }
@@ -204,5 +254,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('book-form');
     if (form) {
         form.addEventListener('submit', handleBookUpload);
+        console.log('✅ تم تحضير نموذج رفع الكتب');
+    } else {
+        console.warn('⚠️ لم يتم العثور على نموذج الرفع');
+    }
+
+    // زر اختبار نقطة النهاية لخدمة الرفع (للتشخيص)
+    const testBtn = document.getElementById('test-upload-endpoint');
+    const statusSpan = document.getElementById('endpoint-test-status');
+    if (testBtn && statusSpan) {
+        testBtn.addEventListener('click', async () => {
+            statusSpan.classList.remove('hidden');
+            statusSpan.textContent = '🔄 جاري اختبار الخدمة...';
+            try {
+                // اختبر OPTIONS request للتحقق من توفر الخدمة
+                const res = await fetch(UPLOAD_ENDPOINT, { 
+                    method: 'OPTIONS', 
+                    cache: 'no-store'
+                });
+                
+                if (res.ok || res.status === 204) {
+                    statusSpan.textContent = `✅ خدمة الرفع متاحة (HTTP ${res.status})`;
+                    console.log('✅ اختبار الخدمة نجح');
+                } else {
+                    statusSpan.textContent = `⚠️ رد من الخادم: ${res.status} ${res.statusText}`;
+                    console.warn('⚠️ رد غير متوقع من الخادم:', res.status);
+                }
+            } catch (err) {
+                statusSpan.textContent = `❌ خطأ: ${err.message || 'تعذر الوصول للخدمة'}`;
+                console.error('❌ فشل اختبار الخدمة:', err);
+            }
+            // أخفِ الحالة بعد 8 ثوانٍ
+            setTimeout(() => statusSpan.classList.add('hidden'), 8000);
+        });
     }
 });
