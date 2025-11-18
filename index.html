@@ -113,7 +113,7 @@
     <button id="close-admin" class="absolute top-3 right-3 text-gray-400 hover:text-white">✕</button>
     <h2 class="text-2xl font-bold text-[#e94560] mb-4 text-center">إضافة كتاب جديد</h2>
 
-    <form id="book-form" class="space-y-4" onsubmit="handleBookUpload(event)">
+    <form id="book-form" class="space-y-4">
       <!-- مؤشر حالة الرفع -->
       <div id="upload-status" class="hidden">
         <div class="flex items-center justify-center space-x-2 space-x-reverse mb-4">
@@ -125,8 +125,14 @@
         </div>
       </div>
 
-      <!-- رسالة الخطأ -->
-      <div id="error-message" class="hidden mt-4 p-4 text-sm text-red-500 bg-red-100 rounded-lg"></div>
+            <!-- رسالة الخطأ -->
+            <div id="error-message" class="hidden mt-4 p-4 text-sm text-red-500 bg-red-100 rounded-lg"></div>
+
+            <!-- زر اختبار خدمة الرفع وحالة الاستجابة -->
+            <div class="mt-2 flex items-center gap-3">
+                <button type="button" id="test-upload-endpoint" class="px-3 py-2 bg-[#6246e9] text-white rounded hover:bg-[#7b66ff]">اختبار خدمة الرفع</button>
+                <span id="endpoint-test-status" class="text-sm text-gray-300 hidden"></span>
+            </div>
 
       <input type="text" id="title" placeholder="عنوان الكتاب" class="w-full p-2 rounded bg-[#16213e] text-white border border-[#6246e9]" required>
       <input type="text" id="author" placeholder="اسم المؤلف" class="w-full p-2 rounded bg-[#16213e] text-white border border-[#6246e9]" required>
@@ -192,7 +198,25 @@
             }
         });
 
+        // حالة المصادقة الخاصة بالمشرف (معروضة فقط للصفحة العميل)
+        window.isAdminAuthenticated = false;
+
+        // قائمة الكتب (سيمكن حذف الكتب محلياً ويُحفظ في localStorage)
         let booksData = [];
+
+        // تحميل قائمة الحذف المحفوظة من localStorage
+        function loadDeletedList() {
+            try {
+                return JSON.parse(localStorage.getItem('deletedBooks') || '[]');
+            } catch (e) {
+                return [];
+            }
+        }
+
+        // حفظ قائمة الحذف
+        function saveDeletedList(list) {
+            localStorage.setItem('deletedBooks', JSON.stringify(list));
+        }
 
         // 2. عناصر DOM الرئيسية
         const elements = {
@@ -243,6 +267,8 @@
         function showBookDetails(book) {
             elements.bookListView.classList.add('hidden');
             elements.bookDetailView.classList.remove('hidden');
+            // تتبع الكتاب الحالي لتمكين إعادة العرض بعد المصادقة
+            window.currentBookId = book.id;
 
             elements.detailContent.innerHTML = `
                 <div class="flex flex-col lg:flex-row gap-8">
@@ -284,6 +310,13 @@
       تنزيل الكتاب الآن (PDF)
   </a>
 </div>
+
+<!-- زر الحذف يظهر فقط إذا كان المُشرف مصادق -->
+${window.isAdminAuthenticated ? `
+    <div class="mt-6">
+        <button onclick="deleteBook('${book.id}')" class="w-full inline-flex items-center justify-center px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg hover:bg-red-700 transition">حذف الكتاب نهائياً</button>
+    </div>
+` : ''}
 
                     </div>
                 </div>
@@ -380,6 +413,69 @@
             renderBooks();
         }
 
+        // بيانات الكتب المتاحة
+        booksData = [
+            {
+                id: 'book-001',
+                title: 'مائة عام من العزلة',
+                author: 'غابرييل غارسيا ماركيز',
+                category: 'روايات',
+                summary: 'رواية خيالية تحتكي قصة عائلة بوينديا عبر سبع أجيال في قرية ماكوندو الخيالية. عمل فني يجمع بين الواقعية والسحر.',
+                description: 'رواية "مائة عام من العزلة" لغابرييل غارسيا ماركيز تعتبر من أعظم الأعمال الأدبية في القرن العشرين. تتناول الرواية قصة عائلة بوينديا على مدى سبعة أجيال في قرية ماكوندو، وتجمع بين عناصر الواقعية الخيالية والأساطير والتاريخ. يصور الكاتب الحب والموت والحرب والعزلة والحنين بطريقة فريدة وعميقة.',
+                cover: 'covers/مائة عام من العزلة.jpeg',
+                downloadUrl: 'books/مائة عام من العزلة.pdf'
+            },
+            {
+                id: 'book-002',
+                title: 'الإنسان يبحث عن المعنى',
+                author: 'فيكتور فرانكل',
+                category: 'تطوير شخصي',
+                summary: 'كتاب عميق يتناول معنى الحياة من خلال تجربة المؤلف في معسكرات الاعتقال. درس في الأمل والمرونة النفسية.',
+                description: 'كتاب "الإنسان يبحث عن المعنى" للدكتور فيكتور فرانكل، الطبيب النفسي النمساوي الذي نجا من معسكرات الاعتقال. يقدم الكتاب نظرية علم النفس الوجودي، حيث يرى أن البحث عن المعنى هو الدافع الأساسي للإنسان. يسرد المؤلف تجربته المؤلمة في المعسكرات والدروس التي تعلمها عن الحياة والأمل.',
+                cover: 'covers/الإنسان يبحث عن المعنى.jpg',
+                downloadUrl: 'books/الإنسان يبحث عن المعنى.pdf'
+            },
+            {
+                id: 'book-003',
+                title: 'الكون الأنيق',
+                author: 'براين جرين',
+                category: 'كتب علمية',
+                summary: 'رحلة فاتنة عبر عالم الفيزياء الحديثة والكون. شرح ميسر لنظرية الأوتار والفيزياء الكوانتية.',
+                description: 'كتاب "الكون الأنيق" للفيزيائي براين جرين يقدم شرحاً ميسراً لمعقدات الفيزياء الحديثة. يتناول الكتاب نظرية الأوتار، والثقوب السوداء، والأبعاد الإضافية، وطبيعة الزمن والمكان. يجمع المؤلف بين الدقة العلمية والقدرة على شرح المفاهيم المعقدة بطريقة بسيطة وجذابة.',
+                cover: 'covers/الكون الأنيق.png',
+                downloadUrl: 'books/الكون الأنيق.pdf'
+            },
+            {
+                id: 'book-004',
+                title: 'تاريخ موجز للزمان',
+                author: 'ستيفن هوكينج',
+                category: 'كتب علمية',
+                summary: 'استكشاف علمي رائع لأصول الكون والثقوب السوداء. كتاب يشرح الكون بلغة مفهومة للجميع.',
+                description: 'كتاب "تاريخ موجز للزمان" لستيفن هوكينج يعتبر من أهم الكتب العلمية الحديثة. يتناول الكتاب أصول الكون، والنجوم، والثقوب السوداء، والزمن، والنسبية. يقدم هوكينج شرحاً عميقاً لأحدث النظريات العلمية بطريقة سهلة الفهم وممتعة.',
+                cover: 'covers/تاريخ موجز للزمان.jpg',
+                downloadUrl: 'books/تاريخ موجز للزمان.pdf'
+            },
+            
+            {
+                id: 'book-006',
+                title: 'أرض زيكولا',
+                author: 'كاتب مجهول',
+                category: 'تاريخ',
+                summary: 'رحلة عبر حضارة قديمة وأسرارها المخفية. دراسة تاريخية عن حضارة ضائعة.',
+                description: 'دراسة تاريخية مهمة تتناول حضارة قديمة وتاريخها العريق. يكشف الكتاب عن أسرار وحقائق لم تكن معروفة من قبل.',
+                cover: 'covers/ard_zicola.jpg',
+                downloadUrl: 'books/ard_zicola.pdf'
+            }
+        ];
+
+        // إزالة الكتب التي وسمت كمحذوفة سابقاً
+        (function filterDeletedOnLoad() {
+            const deleted = loadDeletedList();
+            if (deleted && deleted.length) {
+                booksData = booksData.filter(b => !deleted.includes(b.id));
+            }
+        })();
+
                         window.onload = setupBookSite;
                         function openPreviewModal(url) {
                                 window.open(url, '_blank');
@@ -387,14 +483,25 @@
 
                         // لوحة المشرف (فتح/إغلاق)
                         window.addEventListener('DOMContentLoaded', () => {
-                            const ADMIN_PASSWORD = 'Moaaz2005@';
+                            // API Key الخاص بالمشرف - فقط المشرف يملك هذا
+                            const ADMIN_API_KEY = 'Moaaz2005@';
+
                             function tryOpenAdmin() {
-                                const input = prompt('أدخل كلمة المرور لفتح لوحة المشرف:');
+                                const input = prompt('أدخل مفتاح الإدارة:');
                                 if (!input) return;
-                                if (input === ADMIN_PASSWORD) {
+                                if (input === ADMIN_API_KEY) {
+                                    // استخدم المتغير العالمي
+                                    window.isAdminAuthenticated = true;
                                     document.getElementById('admin-upload').classList.remove('hidden');
+                                    alert('✅ مرحبا بك في لوحة إدارة المكتبة');
+                                    // إعادة عرض تفاصيل الكتاب الحالي إذا كانت مفتوحة لكي يظهر زر الحذف
+                                    if (window.currentBookId) {
+                                        const b = booksData.find(x => x.id === window.currentBookId);
+                                        if (b) showBookDetails(b);
+                                    }
                                 } else {
-                                    alert('كلمة المرور غير صحيحة ❌');
+                                    alert('❌ مفتاح الإدارة غير صحيح. محاولة دخول غير مصرح بها قد تسجل.');
+                                    console.warn('محاولة دخول فاشلة للوحة الإدارة');
                                 }
                             }
                             document.addEventListener('keydown', (e) => {
@@ -417,9 +524,32 @@
                                 });
                             }
 
-                            // تم إزالة المعالج المزدوج هنا لأن النموذج مرتبط بالفعل بـ handleBookUpload في
-                            // ملف `js/upload.js`. هذه الإزالة تمنع أخطاء الوصول إلى عناصر DOM غير الموجودة
-                            // (مثلاً `description`) وتؤمن أن المنطق المركزي في `upload.js` هو المسؤول عن الرفع.
+                            // دالة حذف الكتاب - تحفظ حالة الحذف محلياً في localStorage وتحدّث العرض
+                            window.deleteBook = function(bookId) {
+                                if (!window.isAdminAuthenticated) {
+                                    alert('ليس لديك صلاحية حذف الكتب.');
+                                    return;
+                                }
+                                const book = booksData.find(b => b.id === bookId);
+                                if (!book) {
+                                    alert('الكتاب غير موجود أو تم حذفه سابقاً.');
+                                    return;
+                                }
+                                const ok = confirm('هل أنت متأكد أنك تريد حذف "' + book.title + '"؟ هذه العملية ستخفي الكتاب من الموقع.');
+                                if (!ok) return;
+                                // حفظ في قائمة المحذوفات
+                                const deleted = loadDeletedList();
+                                if (!deleted.includes(bookId)) deleted.push(bookId);
+                                saveDeletedList(deleted);
+                                // إزالة من القائمة الحالية
+                                booksData = booksData.filter(b => b.id !== bookId);
+                                // تحديث العرض والعودة للقائمة
+                                renderBooks();
+                                showBookList();
+                                alert('✅ تم حذف الكتاب محلياً. ملاحظة: الملفات على الخادم لن تُحذف تلقائياً.');
+                            };
+
+                            // (تمت إزالة معالجة الإرسال القديمة هنا - يتم الآن التعامل مع الإرسال في ملف js/upload.js)
                         });
 
 
