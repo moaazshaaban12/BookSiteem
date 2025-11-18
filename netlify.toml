@@ -1,13 +1,17 @@
 [build]
   functions = "netlify/functions"
   publish = "."
+  command = "echo 'BookSite موقع الكتب جاهز للنشر'"
 
 [functions]
   node_bundler = "esbuild"
+  included_files = ["covers/**", "books/**"]
 
 [build.environment]
-  NETLIFY_AUTH_TOKEN = "nfp_Wn1GhHkNgsMC9QZTvNQZidFC454fp5yU4c07"
-  NETLIFY_SITE_ID = "6e50a864-8451-4085-9b16-e683e1dc9f8a"
+  # ضع متغيرات البيئة الآمنة في لوحة تحكم Netlify بدلاً من هنا
+  # NETLIFY_AUTH_TOKEN = "<set-in-netlify-dashboard>"
+  # NETLIFY_SITE_ID = "<set-in-netlify-dashboard>"
+  NODE_ENV = "production"
 
 [dev]
   framework = "#custom"
@@ -17,3 +21,28 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# قواعد الأمان
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+    Cache-Control = "public, max-age=3600"
+
+# قواعد أمان للملفات الثابتة
+[[headers]]
+  for = "/covers/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Content-Type = "image/*"
+
+[[headers]]
+  for = "/books/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Content-Type = "application/pdf"
+    Content-Disposition = "attachment"
